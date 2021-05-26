@@ -1,0 +1,1 @@
+rootProject.name = "eu-rust-events-bot"
