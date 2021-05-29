@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-scripting-jsr223:1.4.32")
+    runtimeOnly("org.jetbrains.kotlin:kotlin-scripting-jsr223:1.4.32")
     implementation(kotlin("stdlib-jdk8"))
 
     // Logger
