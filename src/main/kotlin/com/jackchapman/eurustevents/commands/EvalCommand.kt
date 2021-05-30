@@ -1,17 +1,11 @@
 package com.jackchapman.eurustevents.commands
 
 import com.jackchapman.eurustevents.SignupManager
-import dev.kord.core.behavior.channel.createEmbed
-import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.behavior.reply
 import dev.kord.core.entity.Message
-import dev.kord.core.entity.channel.TextChannel
-import java.io.StringWriter
 import java.net.URL
 import java.util.regex.Pattern
-import javax.script.ScriptContext
 import javax.script.ScriptEngineManager
-import kotlin.system.measureTimeMillis
 
 object EvalCommand : Command {
     private val codePattern = Pattern.compile("```.*\\n([\\s\\S]+)```")
@@ -38,13 +32,16 @@ object EvalCommand : Command {
         engine.put("guild", message.getGuildOrNull())
         engine.put("msg", message)
 
+        val imports = Regex("(import .+\\n?)+").find(code)?.value ?: ""
+
         val value = engine.eval("""
             import kotlinx.coroutines.runBlocking
             import dev.kord.core.*
             import dev.kord.common.*
-
+            $imports
+            
             runBlocking {
-                $code
+                ${code.substringAfter(imports)}
             }
         """.trimIndent())?.toString() ?: "Code ran without return"
 
