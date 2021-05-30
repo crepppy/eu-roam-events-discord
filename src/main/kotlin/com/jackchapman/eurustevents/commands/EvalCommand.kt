@@ -2,8 +2,10 @@ package com.jackchapman.eurustevents.commands
 
 import com.jackchapman.eurustevents.SignupManager
 import dev.kord.core.behavior.channel.createEmbed
+import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.behavior.reply
 import dev.kord.core.entity.Message
+import dev.kord.core.entity.channel.TextChannel
 import java.io.StringWriter
 import java.net.URL
 import java.util.regex.Pattern
@@ -36,14 +38,18 @@ object EvalCommand : Command {
         engine.put("guild", message.getGuildOrNull())
         engine.put("msg", message)
 
-        val value: String
-        val time = measureTimeMillis { value = engine.eval(code)?.toString() ?: "null" }
+        val value = engine.eval("""
+            import kotlinx.coroutines.runBlocking
+            import dev.kord.core.*
+            import dev.kord.common.*
+
+            runBlocking {
+                $code
+            }
+        """.trimIndent())?.toString() ?: "Code ran without return"
 
         message.reply {
-            content = "Executed in **${time}ms**\n$value"
+            content = value
         }
-
-
-
     }
 }
