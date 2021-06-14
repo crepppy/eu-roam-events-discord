@@ -1,8 +1,5 @@
 package com.jackchapman.eurustevents
 
-import com.jackchapman.eurustevents.commands.SteamUserResponse
-import com.jackchapman.eurustevents.commands.SummaryDTO
-import com.jackchapman.eurustevents.commands.VanityDTO
 import io.ktor.client.*
 import io.ktor.client.features.json.*
 import io.ktor.client.request.*
@@ -33,10 +30,10 @@ object SteamUtils : KoinComponent {
         install(JsonFeature)
     }
 
-    fun login(discordId: Long): String {
+    fun login(discordId: Long, responseToken: String): String {
         // todo remove on timer
         val randId = UUID.randomUUID().toString().replace("-", "")
-        WebServer.steamLink[randId] = discordId
+        WebServer.steamLink[randId] = WebServer.LinkInfo(discordId, responseToken)
         return config.server.root + "/auth/$randId"
     }
 
@@ -72,3 +69,16 @@ object SteamUtils : KoinComponent {
     }
 
 }
+
+data class VanityDTO(val response: VanityUrlResponse)
+data class VanityUrlResponse(val steamid: String, val success: Int)
+
+data class SummaryDTO(val response: PlayerSummaryResponse)
+data class PlayerSummaryResponse(val players: List<SteamUserResponse>)
+
+data class SteamUserResponse(
+    val steamid: String,
+    val personaname: String,
+    val profileurl: String,
+    val avatarfull: String,
+)

@@ -14,12 +14,14 @@ import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.*
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import dev.kord.common.exception.RequestException
+import com.jackchapman.eurustevents.commands.Command
 import dev.kord.core.Kord
 import dev.kord.core.behavior.getChannelOf
+import dev.kord.core.behavior.interaction.EphemeralInteractionResponseBehavior
+import dev.kord.core.behavior.interaction.followUp
 import dev.kord.core.entity.channel.GuildMessageChannel
-import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.exception.EntityNotFoundException
+import dev.kord.rest.builder.interaction.actionRow
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.gson.*
@@ -31,6 +33,8 @@ import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
 import kotlinx.html.*
 import org.jetbrains.exposed.sql.select
@@ -49,6 +53,8 @@ import java.time.format.DateTimeFormatter
 
 
 object WebServer : KoinComponent {
+    data class LinkInfo(val id: Long, val token: String)
+
     private val config by inject<Config>()
     private val client by inject<Kord>()
 
@@ -72,7 +78,7 @@ object WebServer : KoinComponent {
     }
 
 
-    val steamLink = mutableMapOf<String, Long>()
+    val steamLink = mutableMapOf<String, LinkInfo>()
     fun run(port: Int = 80) {
         embeddedServer(Netty, port = port) {
             install(ContentNegotiation) { gson() }
@@ -80,11 +86,10 @@ object WebServer : KoinComponent {
                 get("/auth/{user}") {
                     if ("openid.claimed_id" in call.request.queryParameters) {
                         // Returned from steam auth, link user and steam id
-                        val discordId = steamLink[call.request.path().substringAfter("auth/")]
-                        println(call.request.queryParameters["openid.claimed_id"]?.substringAfter("id/"))
+                        val (discordId, token) = steamLink[call.request.path().substringAfter("auth/")]!!
                         val steamId =
                             call.request.queryParameters["openid.claimed_id"]?.substringAfterLast("id/")?.toLongOrNull()
-                        if (discordId == null || steamId == null) {
+                        if (steamId == null) {
                             call.respond(HttpStatusCode.BadRequest)
                             return@get
                         }
@@ -103,12 +108,12 @@ object WebServer : KoinComponent {
                                 p { +"You can now close this tab" }
                             }
                         }
-                        client.getUser(discordId.sf)?.getDmChannelOrNull()?.createMessage(
-                            """
-                            **:white_check_mark: Successfully linked!**
-                            https://steamcommunity.com/profiles/$steamId
-                        """.trimIndent()
-                        )
+                        EphemeralInteractionResponseBehavior(client.selfId, token, client).followUp {
+                            content = """
+                                **:white_check_mark: Successfully linked!**
+                                https://steamcommunity.com/profiles/$steamId
+                            """.trimIndent()
+                        }
                     } else {
                         // Redirect user to the authentication page
                         call.respondRedirect(
@@ -143,12 +148,13 @@ object WebServer : KoinComponent {
                         call.respond(HttpStatusCode.Forbidden)
                         return@delete
                     }
+
+                    call.respond(HttpStatusCode.OK)
+
                     val time = LocalDateTime.ofEpochSecond(event.startDate, 0, ZoneOffset.UTC)
                     event.teams.forEach { team ->
                         try {
-                            guild.getMember(team.leader.sf).removeRole(ROLE_REPRESENTATIVE.sf)
-                            guild.getChannel(team.voice.sf).delete()
-                            guild.getRole(team.role.sf).delete()
+                            team.delete(guild)
                         } catch (e: EntityNotFoundException) {
                         }
                     }
@@ -164,6 +170,10 @@ object WebServer : KoinComponent {
                     }
 
                     call.respond(HttpStatusCode.OK)
+
+                    client.slashCommands.getGuildApplicationCommands(GUILD_EURE.sf)
+                        .filter { slashCmd -> slashCmd.name in Command.EVENT_COMMANDS.map { it.key } }
+                        .collect { it.delete() }
 
                     withContext(Dispatchers.IO) {
                         val gson = Gson()

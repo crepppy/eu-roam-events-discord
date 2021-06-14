@@ -1,26 +1,30 @@
 package com.jackchapman.eurustevents.commands
 
 import com.jackchapman.eurustevents.RustPlayers
-import dev.kord.core.behavior.reply
-import dev.kord.core.entity.Message
+import dev.kord.core.behavior.interaction.followUp
+import dev.kord.core.entity.interaction.CommandInteraction
+import dev.kord.core.entity.interaction.string
+import dev.kord.rest.builder.interaction.ApplicationCommandCreateBuilder
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object GetDiscordCommand : Command {
-    override val requiredArguments: String
-        get() = ""
-    override val adminOnly: Boolean
-        get() = true
+    override val requiredArguments: ApplicationCommandCreateBuilder.() -> Unit
+        get() = {
+            string("steam-id", "The users Steam64 ID") { required = true }
+        }
+    override val description: String
+        get() = "Find the discord user of a linked steam account"
 
-    override suspend fun execute(message: Message) {
-        require(message.args.isNotEmpty())
-
-        val discordIds = transaction {
-            RustPlayers.select { RustPlayers.steamId inList message.args.mapNotNull { it.toLongOrNull() } }.associate { it[RustPlayers.steamId] to it[RustPlayers.discordId] }
+    override suspend fun execute(interaction: CommandInteraction) {
+        val ack = interaction.acknowledgePublic()
+        val steam = transaction {
+            RustPlayers.select { RustPlayers.steamId eq interaction.command.options["steam-id"]!!.string().toLong() }
+                .map { it[RustPlayers.steamId] to it[RustPlayers.discordId] }.first()
         }
 
-        message.reply {
-            content = discordIds.map { "**${it.key}** is linked to the user <@${it.value}>" }.joinToString("\n")
+        ack.followUp {
+            content = "**${steam.first}** is linked to the user <@${steam.second}>"
         }
     }
 

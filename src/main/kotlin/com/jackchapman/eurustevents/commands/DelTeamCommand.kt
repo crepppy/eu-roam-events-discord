@@ -1,56 +1,44 @@
 package com.jackchapman.eurustevents.commands
 
-import com.jackchapman.eurustevents.CATEGORY_EVENT
 import com.jackchapman.eurustevents.SignupManager
-import com.jackchapman.eurustevents.replyError
-import com.jackchapman.eurustevents.sf
-import dev.kord.common.entity.Permission
-import dev.kord.core.behavior.getChannelOf
-import dev.kord.core.behavior.reply
-import dev.kord.core.entity.Message
-import dev.kord.core.entity.channel.Category
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filter
+import dev.kord.common.Color
+import dev.kord.core.behavior.interaction.followUp
+import dev.kord.core.entity.interaction.CommandInteraction
+import dev.kord.core.entity.interaction.role
+import dev.kord.rest.builder.interaction.ApplicationCommandCreateBuilder
+import dev.kord.rest.builder.interaction.embed
 
 object DelTeamCommand : Command {
-    override val guildOnly: Boolean
+    override val requiredArguments: ApplicationCommandCreateBuilder.() -> Unit
+        get() = {
+            role("team", "The role of the team to delete") { required = true }
+        }
+    override val admin: Boolean
         get() = true
-    override val eventOnly: Boolean
-        get() = true
-    override val requiredArguments: String
-        get() = "[role or member id]"
-    override val adminOnly: Boolean
-        get() = true
+    override val description: String
+        get() = "Removes the team from the current events roster"
 
-    override suspend fun execute(message: Message) {
-        require(message.mentionedRoleIds.isNotEmpty() || message.mentionedUserIds.isNotEmpty())
+    override suspend fun execute(interaction: CommandInteraction) {
+        val ack = interaction.acknowledgePublic()
         val event = SignupManager.currentEvent!!
 
-        val team = if (message.mentionedRoleIds.isNotEmpty()) {
-            event.teams.find { it.role == message.mentionedRoleIds.first().value }
-        } else {
-            event.teams.find { message.mentionedUserIds.first().value in it.allMembers }
-        }
+        val role = interaction.command.options["team"]!!.role()
+        val team = event.teams.find { it.role == role.id.value }
         if (team == null) {
-            message.replyError {
-                title = "Team does not exist"
-                description = "Ensure you have tagged the right user / role"
+            ack.followUp {
+                embed {
+                    color = Color(0xFF0000)
+                    title = "Team does not exist"
+                    description = "Ensure you have tagged the right role"
+                }
             }
             return
         }
-        val role = message.getGuild().getRole(team.role.sf)
         event.teams -= team
-        message.getGuild().getChannelOf<Category>(CATEGORY_EVENT.sf).channels.filter {
-            it.permissionOverwrites.any { overwrite ->
-                overwrite.data.id == role.id && overwrite.data.allowed.contains(Permission.Connect)
-            }
-        }.collect { it.delete() }
-        role.delete()
+        team.delete(role.guild)
 
-        message.reply {
-            content = """
-                :white_check_mark: Deleted ${team.name}!
-            """.trimIndent()
+        ack.followUp {
+            content = ":white_check_mark: Deleted ${team.name}!"
         }
     }
 }

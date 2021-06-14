@@ -2,44 +2,33 @@ package com.jackchapman.eurustevents
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.jackchapman.eurustevents.commands.Command
 import com.sksamuel.hoplite.ConfigLoader
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import dev.kord.common.Color
+import dev.kord.common.annotation.KordPreview
+import dev.kord.common.entity.InteractionType
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
-import dev.kord.core.behavior.reply
+import dev.kord.core.behavior.interaction.followUp
 import dev.kord.core.entity.Member
-import dev.kord.core.entity.Message
-import dev.kord.core.event.message.MessageCreateEvent
-import dev.kord.core.event.message.ReactionAddEvent
-import dev.kord.core.live.live
-import dev.kord.core.live.onReactionAdd
+import dev.kord.core.entity.interaction.CommandInteraction
+import dev.kord.core.entity.interaction.ComponentInteraction
+import dev.kord.core.event.interaction.InteractionCreateEvent
 import dev.kord.core.on
-import dev.kord.rest.builder.message.EmbedBuilder
-import dev.kord.x.emoji.Emojis
-import dev.kord.x.emoji.addReaction
+import kotlinx.coroutines.flow.toList
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
-import org.reflections.Reflections
-import org.reflections.scanners.SubTypesScanner
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.util.regex.Pattern
 
-const val PREFIX = "!"
-
-const val CHANNEL_DEV = 830202318154104853L
 const val CHANNEL_EVENT_CHAT = 824619878920224808L
 const val CHANNEL_ROSTER = 823168748487573525L
-const val CHANNEL_ANNOUNCEMENTS = 769951838811455500L
 const val CHANNEL_SIGNUPS = 769955313725997086L
 const val CHANNEL_VIP = 788150240321994839L
 const val CHANNEL_BOOSTER = 783650182251806720L
@@ -49,14 +38,13 @@ const val ROLE_BOOSTER = 770040521669345392L
 const val ROLE_MANAGER = 769948301709279264L
 const val ROLE_REPRESENTATIVE = 778796138505044030L
 
-const val CATEGORY_EVENT = 769954049474166784L
 const val GUILD_EURE = 769946284970606622L
 
-val PING_REGEX: Pattern = Pattern.compile("<@!?(\\d+)>")
-
+@KordPreview
 suspend fun main() {
     val config = ConfigLoader().loadConfigOrThrow<Config>(File("config.toml"))
     val client = Kord(config.discord.token)
+    val debug = System.getenv("EURE_DEBUG") != null
 
     Database.connect(HikariDataSource(HikariConfig().apply {
         config.database.apply {
@@ -81,43 +69,54 @@ suspend fun main() {
         modules(module)
     }
 
-    val packageName = Command::class.qualifiedName!!.split(".").dropLast(1).joinToString(".")
-    val reflections = Reflections(packageName, SubTypesScanner())
-    val commands = reflections.getSubTypesOf(Command::class.java).map { it.kotlin.objectInstance!! }
-        .associateBy { it.name.toLowerCase() }
+    val slashCommands = client.slashCommands.createGuildApplicationCommands(GUILD_EURE.sf) {
+        Command.GLOBAL_COMMANDS.values.forEach { cmd ->
+            command(cmd.name, cmd.description) {
+                defaultPermission = !cmd.admin
+                cmd.requiredArguments(this)
+            }
+        }
+    }.toList()
+
+    client.slashCommands.bulkEditApplicationCommandPermissions(client.selfId, GUILD_EURE.sf) {
+        slashCommands.filter { slashCmd -> slashCmd.name in Command.GLOBAL_COMMANDS.filter { it.value.admin } }
+            .forEach {
+                command(it.id) {
+                    role(ROLE_MANAGER.sf)
+                    user(139068524105564161.sf)
+                }
+            }
+    }
 
     WebServer.run(config.server.port)
 
-    client.on<MessageCreateEvent> {
-        if (message.author == null || message.author?.isBot == true) return@on
-        if (System.getenv("EURE_DEBUG") != null && message.channelId.value != CHANNEL_DEV) return@on
-        if (!message.content.startsWith(PREFIX)) return@on
-        val command = commands[message.content.drop(1).split(' ', '\n', limit = 2)[0].toLowerCase()] ?: return@on
-        if (command.guildOnly && message.getGuildOrNull() == null) return@on
-        if (command.adminOnly && message.getAuthorAsMember()?.isManager() != true) {
-            message.replyError {
-                title = "You cannot run this command"
-                description = "This command is restricted to Manager role"
+    client.on<InteractionCreateEvent> {
+        if (interaction.type == InteractionType.ApplicationCommand) {
+            if (debug && !interaction.user.asMember(GUILD_EURE.sf).isManager()) {
+                interaction.acknowledgeEphemeral().followUp {
+                    content = ":x: This feature is currently not enabled"
+                }
+            } else {
+                Command.COMMANDS[interaction.data.data.name.value!!]?.execute(interaction as CommandInteraction)
             }
-            return@on
-        }
-        if (command.eventOnly && SignupManager.currentEvent == null) {
-            message.replyError {
-                title = "No event running"
-                description =
-                    "We run events every Sunday. Announcements are made every Wednesday in <#$CHANNEL_SIGNUPS>."
-            }
-            return@on
-        }
-        try {
-            command.execute(message)
-        } catch (e: IllegalArgumentException) {
-            message.replyError {
-                title = "Incorrect format"
-                description = """
-                    Correct Format:
-                    `${command.format}`
-                """.trimIndent()
+        } else if (interaction.type == InteractionType.Component) {
+            val id = interaction.data.data.customId.value!!.split("_")
+            if (id[0] == "steam") {
+                val steam = id[1].toLong()
+                val userId = interaction.user.id
+                transaction {
+                    RustPlayers.insertOrUpdate(RustPlayers.steamId) {
+                        it[discordId] = userId.value
+                        it[steamId] = steam
+                    }
+                }
+                (interaction as ComponentInteraction).acknowledgePublicDeferredMessageUpdate().followUp {
+                    content = """
+                        **:white_check_mark: Successfully linked!**
+                        https://steamcommunity.com/profiles/$steam
+                    """.trimIndent()
+                }
+
             }
         }
     }
@@ -127,7 +126,7 @@ suspend fun main() {
         val gson = Gson()
         val event = gson.fromJson(curEvent.readText(), SaveEvent::class.java)
         SignupManager.currentEvent = Event(
-            event.teamSize, event.maxTeams, event.roster, event.startDate, event.signups, event.teams
+            event.teamSize, event.maxTeams, event.roster, event.startDate, event.signups, event.teams, true
         )
     }
 
@@ -148,29 +147,6 @@ val Long.sf: Snowflake
 
 operator fun String.times(times: Int): Array<String> {
     return (1..times).map { this }.toTypedArray()
-}
-
-suspend fun Message.replyError(builder: EmbedBuilder.() -> Unit) {
-    reply {
-        embed = EmbedBuilder().apply {
-            color = Color(0xFF0000)
-            builder(this)
-        }
-    }
-}
-
-suspend fun Message.confirm(id: Long, run: suspend Message.(ReactionAddEvent) -> Unit): Message {
-    addReaction(Emojis.whiteCheckMark)
-    addReaction(Emojis.x)
-    live().onReactionAdd { event ->
-        if (event.userId.value == id) {
-            when (event.emoji.name) {
-                Emojis.whiteCheckMark.unicode -> run(event)
-                Emojis.x.unicode -> delete()
-            }
-        }
-    }
-    return this
 }
 
 fun getWhitelist(): ByteArrayInputStream {

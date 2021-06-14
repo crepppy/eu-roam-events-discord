@@ -1,48 +1,51 @@
 package com.jackchapman.eurustevents.commands
 
-import com.jackchapman.eurustevents.*
-import dev.kord.common.Color
-import dev.kord.core.behavior.channel.createMessage
-import dev.kord.core.behavior.reply
-import dev.kord.core.entity.Message
-import org.jetbrains.exposed.sql.transactions.transaction
+import com.jackchapman.eurustevents.SteamUserResponse
+import com.jackchapman.eurustevents.SteamUtils
+import com.jackchapman.eurustevents.WebServer
+import dev.kord.common.entity.ButtonStyle
+import dev.kord.core.behavior.interaction.followUp
+import dev.kord.core.entity.interaction.CommandInteraction
+import dev.kord.core.entity.interaction.string
+import dev.kord.rest.builder.interaction.ApplicationCommandCreateBuilder
+import dev.kord.rest.builder.interaction.actionRow
+import dev.kord.rest.builder.interaction.allowedMentions
+import dev.kord.rest.builder.interaction.embed
 
 object SteamCommand : Command {
-    override val requiredArguments: String
-        get() = "[steam id / link]"
-    override val guildOnly: Boolean
-        get() = false
+    override val requiredArguments: ApplicationCommandCreateBuilder.() -> Unit
+        get() = {
+            string("steam",
+                "Your Steam64 ID or link. If left out, the bot will DM you a link to authenticate through steam.")
+        }
+    override val description: String
+        get() = "Link your steam account to the EURE discord through logging in with steam or providing your ID"
 
-    override suspend fun execute(message: Message) {
-        if (message.args.isEmpty()) {
-            val dm = message.author!!.getDmChannelOrNull() ?: throw IllegalArgumentException()
-            // No ID specified, authenticate via URL
-            dm.createMessage {
-                embed {
-                    title = "Click here to link your steam"
-                    description =
-                        "If you do not wish to link your steam this way you can also run `!steam` with your steam id / link "
-                    url = SteamUtils.login(message.author!!.id.value)
-                    color = Color(0x00FF00)
+    override suspend fun execute(interaction: CommandInteraction) {
+        val ack = interaction.acknowledgeEphemeral()
+        val steam = interaction.command.options["steam"]?.string()
+        if (steam == null) {
+            ack.followUp {
+                actionRow {
+                    linkButton(SteamUtils.login(interaction.user.id.value, interaction.token)) {
+                        label = "Click here to link steam"
+                    }
                 }
+                content =
+                    "If you do not wish to link your steam this way you can also run `/steam` with your steam id / link"
             }
         } else {
             val steamUser: SteamUserResponse
             try {
-                 steamUser = SteamUtils.getSteamProfile(message.args[0])!!
+                steamUser = SteamUtils.getSteamProfile(steam)!!
             } catch (e: IllegalArgumentException) {
-                message.reply { content = ":x: This is not a valid steam id / link" }
+                ack.followUp {
+                    content = ":x: This is not a valid steam id / link"
+                }
                 return
             }
-            val discord =
-                if (message.args.size == 2 && message.mentionedUserIds.isNotEmpty() && message.getAuthorAsMember()
-                        ?.isManager() == true
-                ) {
-                    message.mentionedUserIds.first().value
-                } else {
-                    message.author!!.id.value
-                }
-            message.reply {
+            
+            ack.followUp {
                 embed {
                     title = "Is this profile correct?"
                     description = steamUser.profileurl
@@ -51,39 +54,17 @@ object SteamCommand : Command {
                     field("Username", inline = true) { steamUser.personaname.ifBlank { "Blank" } }
                     field("ID", inline = true) { steamUser.steamid }
                 }
-            }.confirm(message.author!!.id.value) {
-                transaction {
-                    RustPlayers.insertOrUpdate(RustPlayers.steamId) {
-                        it[discordId] = discord
-                        it[steamId] = steamUser.steamid.toLong()
-                    }
+                actionRow {
+                    interactionButton(ButtonStyle.Success, "steam_${steamUser.steamid}") { label = "Confirm" }
                 }
-                delete()
-                message.reply {
-                    content = """
-                        **:white_check_mark: Successfully linked!**
-                        ${steamUser.profileurl}
-                    """.trimIndent()
+                allowedMentions {
+                    repliedUser = true
                 }
             }
         }
 
     }
 }
-
-data class VanityDTO(val response: VanityUrlResponse)
-data class VanityUrlResponse(val steamid: String, val success: Int)
-
-data class SummaryDTO(val response: PlayerSummaryResponse)
-data class PlayerSummaryResponse(val players: List<SteamUserResponse>)
-
-data class SteamUserResponse(
-    val steamid: String,
-    val personaname: String,
-    val profileurl: String,
-    val avatarfull: String
-)
-
 
 
 
