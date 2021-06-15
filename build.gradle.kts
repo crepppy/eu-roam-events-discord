@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.4.32"
+    kotlin("jvm") version "1.5.10"
     application
     id ("com.github.johnrengelman.shadow") version "6.1.0"
 }
@@ -17,7 +17,7 @@ repositories {
 
 dependencies {
     runtimeOnly("org.jetbrains.kotlin:kotlin-scripting-jsr223:1.4.32")
-    implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("stdlib"))
 
     // Logger
     compileOnly("org.apache.logging.log4j:log4j-core:2.14.0")
@@ -26,11 +26,6 @@ dependencies {
 
     // Discord Library
     implementation("dev.kord:kord-core:0.7.x-SNAPSHOT")
-    implementation("dev.kord.x:emoji:0.5.0-SNAPSHOT")
-
-    // Reflection
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.4.32")
-    implementation("org.reflections:reflections:0.9.12")
 
     // Database
     implementation("org.jetbrains.exposed:exposed-core:0.30.1")
@@ -43,14 +38,15 @@ dependencies {
     implementation("com.sksamuel.hoplite:hoplite-toml:1.4.0")
 
     // WebServer
-    implementation("io.ktor:ktor-server-core:1.5.3")
-    implementation("io.ktor:ktor-server-netty:1.5.3")
-    implementation("io.ktor:ktor-gson:1.5.3")
-    implementation("io.ktor:ktor-html-builder:1.5.3")
+    implementation("io.ktor:ktor-server-core:1.6.0")
+    implementation("io.ktor:ktor-server-netty:1.6.0")
+    implementation("io.ktor:ktor-gson:1.6.0")
+    implementation("io.ktor:ktor-html-builder:1.6.0")
+    implementation("io.ktor:ktor-websockets:1.6.0")
 
     // HTTP Client
-    implementation("io.ktor:ktor-client-gson:1.5.3")
-    implementation("io.ktor:ktor-client-core:1.5.3")
+    implementation("io.ktor:ktor-client-gson:1.6.0")
+    implementation("io.ktor:ktor-client-core:1.6.0")
 
     // Google Sheets
     implementation("com.google.api-client:google-api-client:1.30.4")
@@ -67,17 +63,10 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Jar> {
     manifest {
-        attributes(
-            mapOf(
-                "Main-Class" to application.mainClass
-            )
-        )
+        attributes["Main-Class"] = application.mainClass
     }
 }
 
 application {
     mainClass.set("com.jackchapman.eurustevents.BotKt")
-
-    @kotlin.Suppress("DEPRECATION")
-    mainClassName = "com.jackchapman.eurustevents.BotKt"
 }
