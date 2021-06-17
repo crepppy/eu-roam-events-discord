@@ -42,7 +42,7 @@ const val GUILD_EURE = 769946284970606622L
 
 @KordPreview
 suspend fun main() {
-    val config = ConfigLoader().loadConfigOrThrow<Config>(File("config.toml"))
+    val config = ConfigLoader().loadConfigOrThrow<Config>(File("../config.toml"))
     val client = Kord(config.discord.token)
     val debug = System.getenv("EURE_DEBUG") != null
 
