@@ -86,10 +86,12 @@ class Event(
                         if (signups == Exclusivity.EVERYONE) defaultPermission = true
                         for (i in 1 until teamSize) {
                             user("member$i",
-                                "A member in your team. Do not tag yourself or the same member twice") {
+                                "A member in your team. Do not tag the same member twice") {
                                 required = true
                             }
                         }
+                        user("member${teamSize}",
+                            "A member in your team. Do not tag the same member twice")
                     }
                 }.editPermissions {
                     if (cmd.admin) {
@@ -138,10 +140,12 @@ class Event(
                         this.defaultPermission = true
                         for (i in 1 until teamSize) {
                             user("member$i",
-                                "A member in your team. Do not tag yourself or the same member twice") {
+                                "A member in your team. Do not tag the same member twice") {
                                 required = true
                             }
                         }
+                        user("member${teamSize}",
+                            "A member in your team. Do not tag the same member twice")
                     }
                     sendAnnouncement()
                 }

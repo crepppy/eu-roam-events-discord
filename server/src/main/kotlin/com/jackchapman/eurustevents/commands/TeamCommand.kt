@@ -42,7 +42,7 @@ object TeamCommand : Command {
             return
         }
         val authorId = interaction.user.id.value
-        val ids = (listOf(authorId) + interaction.command.resolved!!.users!!.keys.map { it.value }).distinct().toSet()
+        val ids = (listOf(authorId) + interaction.command.resolved!!.users!!.keys.map { it.value }).distinct().take(10).toSet()
 
         if (ids.size != event.teamSize) {
             ack.followUp {
