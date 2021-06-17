@@ -121,7 +121,7 @@ suspend fun main() {
         }
     }
 
-    val curEvent = File("event.json")
+    val curEvent = File("../event.json")
     if (curEvent.exists()) {
         val gson = Gson()
         val event = gson.fromJson(curEvent.readText(), SaveEvent::class.java)
