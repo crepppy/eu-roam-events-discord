@@ -56,6 +56,15 @@ object TeamCommand : Command {
         }
 
         val teamName = interaction.command.options["team-name"]!!.string()
+        if(event.teams.any { it.name.equals(teamName, true) }) {
+            ack.followUp {
+                embed {
+                    color = Color(0xFF0000)
+                    title = "Team Already Exists"
+                    description = "A team with this name already exists. Please change you team name"
+                }
+            }
+        }
 
         val alreadyPlaying = event.teams.flatMap { it.allMembers }.filter { it in ids }
 

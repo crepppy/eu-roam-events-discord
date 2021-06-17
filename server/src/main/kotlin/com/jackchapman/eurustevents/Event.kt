@@ -49,6 +49,8 @@ data class SaveEvent(
     val teams: MutableList<Team>
 )
 
+data class GameScore(var kills: Int, var guns: Int)
+
 class Event(
     val teamSize: Int,
     val maxTeams: Int,
@@ -66,6 +68,7 @@ class Event(
 
     @delegate:Transient
     private val client by inject<Kord>()
+    val scores = mutableMapOf<Team, GameScore>()
 
     val rosterEmbed: EmbedBuilder
         get() = EmbedBuilder().apply {

@@ -65,6 +65,11 @@ tasks.withType<Jar> {
         attributes["Main-Class"] = application.mainClass
     }
 }
+tasks {
+    "processResources" {
+        dependsOn(":frontend:build")
+    }
+}
 
 application {
     mainClass.set("com.jackchapman.eurustevents.BotKt")
