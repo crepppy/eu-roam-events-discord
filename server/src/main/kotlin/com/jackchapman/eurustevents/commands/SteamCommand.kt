@@ -5,6 +5,7 @@ import com.jackchapman.eurustevents.SteamUtils
 import com.jackchapman.eurustevents.WebServer
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.behavior.interaction.followUp
+import dev.kord.core.behavior.interaction.followUpEphemeral
 import dev.kord.core.entity.interaction.CommandInteraction
 import dev.kord.core.entity.interaction.string
 import dev.kord.rest.builder.interaction.ApplicationCommandCreateBuilder
@@ -25,7 +26,7 @@ object SteamCommand : Command {
         val ack = interaction.acknowledgeEphemeral()
         val steam = interaction.command.options["steam"]?.string()
         if (steam == null) {
-            ack.followUp {
+            ack.followUpEphemeral {
                 actionRow {
                     linkButton(SteamUtils.login(interaction.user.id.value, interaction.token)) {
                         label = "Click here to link steam"
@@ -39,13 +40,13 @@ object SteamCommand : Command {
             try {
                 steamUser = SteamUtils.getSteamProfile(steam)!!
             } catch (e: IllegalArgumentException) {
-                ack.followUp {
+                ack.followUpEphemeral {
                     content = ":x: This is not a valid steam id / link"
                 }
                 return
             }
             
-            ack.followUp {
+            ack.followUpEphemeral {
                 embed {
                     title = "Is this profile correct?"
                     description = steamUser.profileurl

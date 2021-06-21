@@ -19,6 +19,7 @@ import dev.kord.core.Kord
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.behavior.interaction.EphemeralInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.followUp
+import dev.kord.core.behavior.interaction.followUpPublic
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.exception.EntityNotFoundException
 import dev.kord.rest.builder.interaction.actionRow
@@ -108,7 +109,7 @@ object WebServer : KoinComponent {
                                 p { +"You can now close this tab" }
                             }
                         }
-                        EphemeralInteractionResponseBehavior(client.selfId, token, client).followUp {
+                        EphemeralInteractionResponseBehavior(client.selfId, token, client).followUpPublic {
                             content = """
                                 **:white_check_mark: Successfully linked!**
                                 https://steamcommunity.com/profiles/$steamId

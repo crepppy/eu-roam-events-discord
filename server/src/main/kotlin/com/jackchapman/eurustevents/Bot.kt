@@ -12,6 +12,7 @@ import dev.kord.common.entity.InteractionType
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.followUp
+import dev.kord.core.behavior.interaction.followUpEphemeral
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.interaction.CommandInteraction
 import dev.kord.core.entity.interaction.ComponentInteraction
@@ -93,7 +94,7 @@ suspend fun main() {
     client.on<InteractionCreateEvent> {
         if (interaction.type == InteractionType.ApplicationCommand) {
             if (debug && !interaction.user.asMember(GUILD_EURE.sf).isManager()) {
-                interaction.acknowledgeEphemeral().followUp {
+                interaction.acknowledgeEphemeral().followUpEphemeral {
                     content = ":x: This feature is currently not enabled"
                 }
             } else {
