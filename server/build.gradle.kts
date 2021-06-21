@@ -10,7 +10,6 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    maven("https://oss.sonatype.org/content/repositories/snapshots")
     maven("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
 }
 
@@ -24,7 +23,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.2.3")
 
     // Discord Library
-    implementation("dev.kord:kord-core:0.7.x-SNAPSHOT")
+    implementation("dev.kord:kord-core:0.7.0")
 
     // Database
     implementation("org.jetbrains.exposed:exposed-core:0.30.1")

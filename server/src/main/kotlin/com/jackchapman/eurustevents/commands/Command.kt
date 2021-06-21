@@ -8,7 +8,7 @@ interface Command {
         val GLOBAL_COMMANDS =
             listOf(GetDiscordCommand, GetSteamCommand, PingCommand, SteamCommand).associateBy(Command::name)
         val EVENT_COMMANDS =
-            listOf(DelTeamCommand, SubCommand, TeamCommand, WhitelistCommand).associateBy(Command::name)
+            listOf(DelTeamCommand, SubCommand, TeamCommand, WhitelistCommand, VerifyRolesCommand).associateBy(Command::name)
         val COMMANDS = GLOBAL_COMMANDS + EVENT_COMMANDS
     }
 

@@ -119,17 +119,13 @@ object TeamCommand : Command {
         }!!.id.value
 
         val team = Team(teamName, role.id.value, voice, authorId, (ids - authorId).toMutableSet())
+        interaction.user.asMember(guild.id).addRole(ROLE_REPRESENTATIVE.sf)
         event.teams += team
         event.updateRoster()
         team.allMembers.map { guild.getMember(it.sf) }.forEach { it.addRole(role.id) }
-        interaction.user.asMember(guild.id).addRole(ROLE_REPRESENTATIVE.sf)
         roster.editRolePermission(role.id) {
             allowed = Permissions(Permission.ViewChannel, Permission.ReadMessageHistory)
             denied = Permissions(Permission.SendMessages)
-        }
-        roster.editRolePermission(guild.everyoneRole.id) {
-            allowed = Permissions()
-            denied = Permissions(Permission.SendMessages, Permission.ViewChannel, Permission.ReadMessageHistory)
         }
 
         eventChat.editRolePermission(role.id) {
