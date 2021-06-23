@@ -65,6 +65,14 @@ namespace Oxide.Plugins
             Task.Run(async () => await _client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None));
         }
 
+        private object OnPlayerDeath(BasePlayer player, HitInfo info)
+        {
+            if (info.InitiatorPlayer == null) return null;
+            if (!_teams.ContainsKey(info.InitiatorPlayer.userID)) return null;
+            SendMsg(_teams[info.InitiatorPlayer.userID] + $"\nkill\n{info.InitiatorPlayer.displayName} {player.displayName}");
+            return null;
+        }
+
         private void OnPlayerLootEnd(PlayerLoot inventory)
         {
             var player = inventory.baseEntity.userID;
