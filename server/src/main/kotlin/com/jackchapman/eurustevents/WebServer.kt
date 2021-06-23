@@ -142,7 +142,7 @@ object WebServer : KoinComponent {
                         conn.getOutputStream().use {
                             getWhitelist().copyTo(it)
                         }
-
+                        SignupManager.currentEvent!!.scores.putAll(SignupManager.currentEvent!!.teams.associateWith { GameScore() })
                         SignupManager.currentEvent!!.startDate =
                             LocalDateTime.now(ZoneId.of("GMT+0")).toEpochSecond(ZoneOffset.UTC)
                         saveEventToFile()
@@ -346,7 +346,7 @@ object WebServer : KoinComponent {
                             val (teamName, op, option) = frame.readText().split("\n", limit = 3)
                             val team = event.teams.find { it.name == teamName } ?: return@collect
 
-                            if (team !in event.scores) event.scores[team] = GameScore(0, 0)
+                            if (team !in event.scores) event.scores[team] = GameScore()
                             val score = event.scores[team]!!
 
                             val data = when (EventType.valueOf(op.uppercase())) {

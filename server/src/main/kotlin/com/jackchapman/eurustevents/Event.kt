@@ -49,7 +49,7 @@ data class SaveEvent(
     val teams: MutableList<Team>
 )
 
-data class GameScore(var kills: Int, var guns: Int)
+data class GameScore(var kills: Int = 0, var guns: Int = 84)
 
 class Event(
     val teamSize: Int,
