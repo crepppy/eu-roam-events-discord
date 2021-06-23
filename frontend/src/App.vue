@@ -44,27 +44,27 @@
 </template>
 
 <script lang="ts">
-import {computed, ref} from "vue";
+import {computed, ref} from "vue"
 
 class Team {
-  teamName: string;
-  kills: number;
-  aks: number;
+  teamName: string
+  kills: number
+  aks: number
 
   constructor(teamName: string, kills: number, aks: number) {
-    this.teamName = teamName;
-    this.kills = kills;
-    this.aks = aks;
+    this.teamName = teamName
+    this.kills = kills
+    this.aks = aks
   }
 
   get score() {
-    return Math.round(this.aks * .3 + this.kills)
+    return this.aks * .3 + this.kills
   }
 }
 
 type Log = {
-  id: number;
-  msg: string;
+  id: number
+  msg: string
 }
 
 export default {
@@ -73,32 +73,39 @@ export default {
     const log = ref<Log[]>([])
     const leaderboard = computed(() => [...teams.value.values()].sort((a, b) => a.score > b.score ? -1 : 1))
 
-    const eventSource = new EventSource("/api/game");
+    const eventSource = new EventSource("/api/game")
+    let lastId = 0
     
     eventSource.onmessage = (event: MessageEvent) => {
-      let [method, ...data] = event.data.split("\n")
+      const [method, ...data] = event.data.split("\n")
       switch (method) {
         case 'team': {
           teams.value.set(data[0], new Team(data[0], parseInt(data[1]), parseInt(data[2])))
-          break;
+          break
         }
         case 'gun': {
-          let n = parseInt(data[1]) - teams.value.get(data[0])!.aks
+          const n = parseInt(data[1]) - teams.value.get(data[0])!.aks
           teams.value.get(data[0])!.aks = parseInt(data[1])
-          if (n > 0)
-            log.value.push({
-              id: Date.now(),
-              msg: `${data[0]} deposited ${n} AKs`
-            })
-          break;
+          if (n > 0) {
+            const match = log.value.length ? log.value[log.value.length - 1].msg.match(`${data[0]} deposited (\\d+) AKs`) : null
+            if (match != null) {
+              log.value[log.value.length - 1].msg = `${data[0]} deposited ${n + Number.parseInt(match[1])} AKs`
+            } else {
+              log.value.push({
+                id: lastId++,
+                msg: `${data[0]} deposited ${n} AKs`
+              })
+            }
+          }
+          break
         }
         case 'kill': {
           teams.value.get(data[0])!.kills = parseInt(data[1])
           log.value.push({
-            id: Date.now(),
+            id: lastId++,
             msg: `${data[2]} killed ${data[3]}`
           })
-          break;
+          break
         }
       }
     }
