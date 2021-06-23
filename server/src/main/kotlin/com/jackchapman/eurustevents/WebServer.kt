@@ -18,7 +18,6 @@ import com.jackchapman.eurustevents.commands.Command
 import dev.kord.core.Kord
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.behavior.interaction.EphemeralInteractionResponseBehavior
-import dev.kord.core.behavior.interaction.followUp
 import dev.kord.core.behavior.interaction.followUpPublic
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.exception.EntityNotFoundException
@@ -337,12 +336,15 @@ object WebServer : KoinComponent {
                             call.respond(HttpStatusCode.Forbidden)
                             return@webSocket
                         }
+                        
+                        val teamStr = event.teams.joinToString("\n") { it.allMembers.joinToString(" ") + " " + it.name }
+                        send("${event.teamSize}\n$teamStr")
                         incoming.consumeAsFlow().mapNotNull { it as? Frame.Text }.collect { frame ->
                             // player
                             // kill / depo
                             // player / amount
-                            val (player, op, option) = frame.readText().split(" ", limit = 3)
-                            val team = event.teams.find { player.toLong() in it.allMembers } ?: return@collect
+                            val (teamName, op, option) = frame.readText().split("\n", limit = 3)
+                            val team = event.teams.find { it.name == teamName } ?: return@collect
 
                             if (team !in event.scores) event.scores[team] = GameScore(0, 0)
                             val score = event.scores[team]!!
