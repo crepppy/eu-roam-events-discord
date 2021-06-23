@@ -365,7 +365,7 @@ object WebServer : KoinComponent {
                                 }
                             }
 
-                            flow.emit(SSEEvent(team.name + "\n" + data, op))
+                            flow.emit(SSEEvent(op + "\n" + team.name + "\n" + data))
                         }
                     }
                     get("/game") {
@@ -379,7 +379,7 @@ object WebServer : KoinComponent {
                         try {
                             call.respondTextWriter(contentType = ContentType.Text.EventStream) {
                                 for (team in event.teams) {
-                                    write("event: team\n")
+                                    write("data: team\n")
                                     write("data: ${team.name}\n")
                                     write("data: ${event.scores[team]?.kills ?: 0}\n")
                                     write("data: ${event.scores[team]?.guns ?: 0}\n")

@@ -36,58 +36,72 @@
   </div>
   <div class="feed">
     <ul>
-      <li v-for="msg in log" :key="msg.id">
-        {{ msg.data }}
+      <li v-for="msg in log.slice(0).reverse()" :key="msg.id">
+        {{ msg.msg }}
       </li>
     </ul>
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {computed, ref} from "vue";
+
+class Team {
+  teamName: string;
+  kills: number;
+  aks: number;
+
+  constructor(teamName: string, kills: number, aks: number) {
+    this.teamName = teamName;
+    this.kills = kills;
+    this.aks = aks;
+  }
+
+  get score() {
+    return Math.round(this.aks * .3 + this.kills)
+  }
+}
+
+type Log = {
+  id: number;
+  msg: string;
+}
 
 export default {
   setup() {
-    Object.values = Object.values || function(o){return Object.keys(o).map(function(k){return o[k]})};
-
-    const teams = ref({})
-    const log = ref([])
-    const leaderboard = computed(() => Object.values(teams.value).sort((a, b) => a.score() > b.score() ? -1 : 1))
-    
-    function getScore() {
-      return Math.round(this.aks * .3 + this.kills)
-    }
+    const teams = ref(new Map<string, Team>())
+    const log = ref<Log[]>([])
+    const leaderboard = computed(() => [...teams.value.values()].sort((a, b) => a.score > b.score ? -1 : 1))
 
     const eventSource = new EventSource("/api/game");
     
-    eventSource.addEventListener('team', function(event) {
-      let data = event.data.split("\n")
-      teams.value[data[0]] = {
-        teamName: data[0],
-        kills: parseInt(data[1]),
-        aks: parseInt(data[2]),
-        score: getScore,
+    eventSource.onmessage = (event: MessageEvent) => {
+      let [method, ...data] = event.data.split("\n")
+      switch (method) {
+        case 'team': {
+          teams.value.set(data[0], new Team(data[0], parseInt(data[1]), parseInt(data[2])))
+          break;
+        }
+        case 'gun': {
+          let n = parseInt(data[1]) - teams.value.get(data[0])!.aks
+          teams.value.get(data[0])!.aks = parseInt(data[1])
+          if (n > 0)
+            log.value.push({
+              id: Date.now(),
+              msg: `${data[0]} deposited ${n} AKs`
+            })
+          break;
+        }
+        case 'kill': {
+          teams.value.get(data[0])!.kills = parseInt(data[1])
+          log.value.push({
+            id: Date.now(),
+            msg: `${data[2]} killed ${data[3]}`
+          })
+          break;
+        }
       }
-    })
-    
-    // todo: support removing guns with negative data
-    eventSource.addEventListener('gun', function(event) {
-      let data = event.data.split("\n")
-      log.value.push({
-        id: Date.now(),
-        data: `${data[0]} deposited ${parseInt(data[1]) - teams.value[data[0]].aks} AKs`
-      })
-      teams.value[data[0]].aks = parseInt(data[1])
-    })
-
-    eventSource.addEventListener('kill', function(event) {
-      let data = event.data.split("\n")
-      teams.value[data[0]].kills = parseInt(data[1])
-      log.value.push({
-        id: Date.now(),
-        data: `${data[2]} killed ${data[3]}`
-      })
-    })
+    }
 
     return {
       teams,

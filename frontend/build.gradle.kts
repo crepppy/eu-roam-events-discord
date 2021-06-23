@@ -1,4 +1,5 @@
 tasks.register<Exec>("npmBuild") {
+    commandLine("npm", "install")
     commandLine("npm", "run", "build")
 }
 
