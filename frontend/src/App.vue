@@ -1,8 +1,7 @@
 <template>
   <EventLeaderboard v-if="event" :event-source="eventSource"/>
   <svg v-else-if="loading" class="loading" viewBox="0 0 100 100" x="0px" xml:space="preserve" y="0px">
-    <path d="M73,50c0-12.7-10.3-23-23-23S27,37.3,27,50 M30.9,50c0-10.5,8.5-19.1,19.1-19.1S69.1,39.5,69.1,50"
-          fill="#000">
+    <path d="M73,50c0-12.7-10.3-23-23-23S27,37.3,27,50 M30.9,50c0-10.5,8.5-19.1,19.1-19.1S69.1,39.5,69.1,50">
       <animateTransform
           attributeName="transform"
           attributeType="XML"
@@ -36,7 +35,7 @@ export default {
   setup() {
     const eventSource = ref(new EventSource("/api/game"))
     let loading = ref(true)
-    let event = ref(false)
+    let event = ref(false) 
 
     eventSource.value.onerror = () => {
       loading.value = false
@@ -59,15 +58,17 @@ export default {
 <style lang="scss">
 #app {
   font-family: 'Roboto', sans-serif;
-  font-size: 1.5em;
+  color: white;
+  background-color: #242627;
   display: flex;
   min-height: 100vh;
 }
 
 .info {
   margin: auto;
-  padding-bottom: 5em;
+  padding-bottom: 5rem;
   color: #fff;
+  font-size: 1.3em;
 }
 
 .overlay {
@@ -95,6 +96,7 @@ export default {
   margin: auto;
   display: inline-block;
   visibility: hidden;
+  fill: #fff;
   animation: 0ms linear 300ms forwards loadingWait;
 
   @keyframes loadingWait {
