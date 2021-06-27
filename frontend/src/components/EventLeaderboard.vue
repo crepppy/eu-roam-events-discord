@@ -1,7 +1,7 @@
 <template>
   <div class="sidebar">
-    <h1>EURE Event Leaderboard</h1>
-    <button @click="hideLog = !hideLog">Toggle Logs</button>
+    <img src="../assets/eure.png" alt="EURE Logo">
+    <button type="button" @click="toggleLogs()">Toggle Logs</button>
   </div>
   <div id="leaderboard">
     <table id="table">
@@ -87,7 +87,7 @@ export default defineComponent({
     const teams = ref(new Map<string, Team>())
     const log = ref<Log[]>([])
     const leaderboard = computed(() => [...teams.value.values()].sort((a, b) => a.score > b.score ? -1 : 1))
-    let hideLog = ref(true)
+    const hideLog = ref((sessionStorage.getItem("hideLog") ?? 'true').toLowerCase() === "true")
 
     const {eventSource} = toRefs(props)
     let lastId = 0
@@ -126,11 +126,17 @@ export default defineComponent({
       }
     }
 
+    function toggleLogs() {
+      hideLog.value = !hideLog.value
+      sessionStorage.setItem("hideLog", hideLog.value.toString())
+    }
+    
     return {
       teams,
       log,
       leaderboard,
       hideLog,
+      toggleLogs,
     }
   }
 })
@@ -147,9 +153,29 @@ export default defineComponent({
   top: 0;
   left: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 260px;
 
-  h1 {
+  img {
     padding-bottom: 2rem;
+  }
+  
+  button {
+    border: none;
+    padding: .4em 0;
+    border-radius: 4px;
+    text-transform: uppercase;
+    color: #000;
+    background-color: #ffcc00;
+    font-size: .9rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+
+    &:hover {
+      box-shadow: rgba(0, 0, 0, 0.15) 2px 5px;
+    }
   }
 }
 
@@ -191,13 +217,20 @@ export default defineComponent({
 #feed {
   width: 40%;
   font-size: 1.2em;
-  overflow-y: hidden;
+  overflow-y: scroll;
   padding: 2rem 2rem 1rem 2rem;
   margin: 0 auto;
   position: sticky;
   height: 100vh;
   top: 0;
   right: 0;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   @media screen and (min-width: 1500px) {
     width: 30%;
