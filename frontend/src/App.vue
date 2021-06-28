@@ -17,11 +17,9 @@
       <source src="./assets/blur.webm" type="video/webm">
       <source src="./assets/blur.mp4" type="video/mp4">
     </video>
-    <div class="overlay">
-      <div class="info">
-        <h1>No event currently running!</h1>
-        <p>We run events every Sunday at 7pm. Join our discord to be notified of event signups</p>
-      </div>
+    <div class="info">
+      <h1>No event currently running!</h1>
+      <p>We run events every Sunday at 7pm. Join our discord to be notified of event signups</p>
     </div>
   </template>
 </template>
@@ -34,8 +32,8 @@ export default {
   components: {EventLeaderboard},
   setup() {
     const eventSource = ref(new EventSource("/api/game"))
-    let loading = ref(true)
-    let event = ref(false) 
+    const loading = ref(true)
+    const event = ref(false) 
 
     eventSource.value.onerror = () => {
       loading.value = false
@@ -56,10 +54,12 @@ export default {
 </script>
 
 <style lang="scss">
+body {
+  background-color: #242627;
+}
 #app {
   font-family: 'Roboto', sans-serif;
   color: white;
-  background-color: #242627;
   display: flex;
   min-height: 100vh;
   flex-wrap: wrap;
@@ -74,16 +74,7 @@ export default {
   padding: 0 1rem 5rem 1rem;
   color: #fff;
   font-size: 1.3em;
-}
-
-.overlay {
-  position: relative;
-  height: 100vh;
-  width: 100vw;
   text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 #bgvideo {
@@ -93,6 +84,7 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
+  z-index: -1;
 }
 
 .loading {

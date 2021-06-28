@@ -218,6 +218,7 @@ export default defineComponent({
     outline: none;
     cursor: pointer;
     margin-left: auto;
+    touch-action: manipulation;
 
     &:hover {
       box-shadow: rgba(0, 0, 0, 0.15) 2px 5px;
