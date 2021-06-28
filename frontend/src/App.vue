@@ -62,11 +62,16 @@ export default {
   background-color: #242627;
   display: flex;
   min-height: 100vh;
+  flex-wrap: wrap;
+
+  @media screen and (min-width: 980px) {
+    flex-wrap: nowrap;
+  }
 }
 
 .info {
   margin: auto;
-  padding-bottom: 5rem;
+  padding: 0 1rem 5rem 1rem;
   color: #fff;
   font-size: 1.3em;
 }
