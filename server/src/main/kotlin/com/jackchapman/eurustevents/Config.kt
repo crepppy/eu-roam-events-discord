@@ -7,5 +7,5 @@ data class ServerConfig(
     val root: String = "http://127.0.0.1${if (port == 443 || port == 80) "" else ":$port"}",
     val password: String
 )
-
-data class Config(val discord: DiscordConfig, val database: DatabaseConfig, val server: ServerConfig)
+data class RustConfig(val ftp: String? = null)
+data class Config(val discord: DiscordConfig, val database: DatabaseConfig, val server: ServerConfig, val rust: RustConfig)

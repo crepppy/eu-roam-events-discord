@@ -148,11 +148,11 @@ object WebServer : KoinComponent {
                                 return@post
                             }
 
-                            val fileLocation = "***REMOVED***/oxide/config/SimpleWhitelist.json"
-                            val conn =
-                                URL("***REMOVED***/$fileLocation;type=i").openConnection()
-                            conn.getOutputStream().use {
-                                getWhitelist().copyTo(it)
+                            config.rust.ftp?.let { url ->
+                                val conn = URL("${url}/oxide/config/SimpleWhitelist.json;type=i").openConnection()
+                                conn.getOutputStream().use {
+                                    getWhitelist().copyTo(it)
+                                }
                             }
                             SignupManager.currentEvent!!.scores.putAll(SignupManager.currentEvent!!.teams.associateWith { GameScore() })
                             SignupManager.currentEvent!!.startDate =
@@ -194,11 +194,10 @@ object WebServer : KoinComponent {
                                 .filter { slashCmd -> slashCmd.name in Command.EVENT_COMMANDS.map { it.key } }
                                 .collect { it.delete() }
 
+                            if(config.rust.ftp == null) return@delete
                             withContext(Dispatchers.IO) {
                                 val gson = Gson()
-                                val fileLocation = "***REMOVED***/oxide/data/KDRData.json"
-                                val conn =
-                                    URL("***REMOVED***/$fileLocation").openConnection()
+                                val conn = URL("${config.rust.ftp}/oxide/data/KDRData.json").openConnection()
                                 val data = conn.getInputStream().use { stream ->
                                     stream.bufferedReader().use { reader ->
                                         gson.fromJson(

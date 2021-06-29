@@ -52,6 +52,9 @@ database = "eure"
 port = 8001 # The port the webserver is hosted at
 root = "https://eure.jack-chapman.com" # OPTIONAL: The callback address for steam authentication
 password = "1Bl*8U8Gv8F%fKhC" # The credentials used for priviliged endpoints
+
+[rust]
+ftp = "ftp://user:pass@127.0.0.1:21/rust" # OPTIONAL: FTP link directly to rust server directory
 ```
 
 Furthermore, in order for the web app to track each team's stats, the plugin [RoamEventsTracking.cs](RoamEventsTracking.cs) should be added to your rust server. Due to the nature of the plugin, [**you must disable plugin sandboxing**](https://umod.org/guides/oxide/disabling-plugin-sandboxing) in order for it to run. This plugin also has a simple config that should look similar to the below config:
