@@ -21,11 +21,7 @@ namespace Oxide.Plugins
         private void Loaded()
         {
             _client.Options.SetRequestHeader("Authorization", "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(":" + Config["WebsocketCredentials"])));
-            Task.Run(async () =>
-            {
-                await Connect();
-                _teams = await ReceiveTeams();
-            });
+            Task.Run(async () => await Connect());
         }
 
         private async Task<Dictionary<ulong, string>> ReceiveTeams()
@@ -138,8 +134,10 @@ namespace Oxide.Plugins
 
         private async Task Connect()
         {
-            if(_client.State != WebSocketState.Open)
+            if(_client.State != WebSocketState.Open) {
                 await _client.ConnectAsync(new Uri(Config["WebsocketAddress"].ToString()), CancellationToken.None);
+                _teams = await ReceiveTeams();
+            }
         }
 
         private void SendMsg(string data) {
