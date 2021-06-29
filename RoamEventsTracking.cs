@@ -20,6 +20,7 @@ namespace Oxide.Plugins
         private Dictionary<ulong, string> _teams = new Dictionary<ulong, string>();
         private void Loaded()
         {
+            _client.Options.SetRequestHeader("Authorization", "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(":" + Config["WebsocketCredentials"])));
             Task.Run(async () =>
             {
                 await Connect();
@@ -64,6 +65,12 @@ namespace Oxide.Plugins
         {
             Task.Run(async () => await _client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None));
         }
+        
+        protected override void LoadDefaultConfig()
+        {
+            Config["WebsocketAddress"] = "CHANGE THIS";
+            Config["WebsocketCredentials"] = "CHANGE THIS";
+        }
 
         private object OnPlayerDeath(BasePlayer player, HitInfo info)
         {
@@ -76,7 +83,7 @@ namespace Oxide.Plugins
         private void OnPlayerLootEnd(PlayerLoot inventory)
         {
             var player = inventory.baseEntity.userID;
-            if (!_deposit.ContainsKey(player)) return;
+            if (!_deposit.ContainsKey(player) || !_teams.ContainsKey(player)) return;
             var team = _teams[player];
             SendMsg($"{team}\ngun\n{(int)_deposit[player]}");
             _deposit.Remove(player);
@@ -113,9 +120,7 @@ namespace Oxide.Plugins
             else return null;
 
             if (priv == null) return null;
-            // Get team the chest belongs to
-            _deposit[player] =
-                (_deposit.ContainsKey(player) ? _deposit[player] : 0) + positive;
+            _deposit[player] = (_deposit.ContainsKey(player) ? _deposit[player] : 0) + positive;
             return null;
         }
 
@@ -134,7 +139,7 @@ namespace Oxide.Plugins
         private async Task Connect()
         {
             if(_client.State != WebSocketState.Open)
-                await _client.ConnectAsync(new Uri("ws://127.0.0.1:8001/api/game"), CancellationToken.None);
+                await _client.ConnectAsync(new Uri(Config["WebsocketAddress"].ToString()), CancellationToken.None);
         }
 
         private void SendMsg(string data) {

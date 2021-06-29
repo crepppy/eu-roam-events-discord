@@ -41,6 +41,7 @@ dependencies {
     implementation("io.ktor:ktor-gson:1.6.0")
     implementation("io.ktor:ktor-html-builder:1.6.0")
     implementation("io.ktor:ktor-websockets:1.6.0")
+    implementation("io.ktor:ktor-auth:1.6.0")
 
     // HTTP Client
     implementation("io.ktor:ktor-client-gson:1.6.0")
