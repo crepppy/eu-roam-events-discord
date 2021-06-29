@@ -87,6 +87,7 @@ object WebServer : KoinComponent {
         embeddedServer(Netty, port = port) {
             install(ContentNegotiation) { gson() }
             install(WebSockets)
+            install(AutoHeadResponse)
             install(Authentication) {
                 basic("auth") {
                     realm = "Access event admin endpoints"
