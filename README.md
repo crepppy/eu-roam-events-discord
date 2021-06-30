@@ -57,7 +57,7 @@ password = "1Bl*8U8Gv8F%fKhC" # The credentials used for priviliged endpoints
 ftp = "ftp://user:pass@127.0.0.1:21/rust" # OPTIONAL: FTP link directly to rust server directory
 ```
 
-Furthermore, in order for the web app to track each team's stats, the plugin [RoamEventsTracking.cs](RoamEventsTracking.cs) should be added to your rust server. Due to the nature of the plugin, [**you must disable plugin sandboxing**](https://umod.org/guides/oxide/disabling-plugin-sandboxing) in order for it to run. This plugin also has a simple config that should look similar to the below config:
+Furthermore, in order for the web app to track each team's stats, the plugin [RoamEventsTracking.cs](RoamEventsTracking.cs) should be added to your rust server. Due to the nature of the plugin, [**you must disable plugin sandboxing**](https://umod.org/guides/oxide/disabling-plugin-sandboxing) in order for it to run. This plugin also has a simple config that should look similar to:
 ```json
 {
   "WebsocketAddress": "ws://127.0.0.1:8001/api/game",
@@ -95,7 +95,7 @@ PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 45 18 * * sun curl -H "Authorization: Basic OjFCbCo4VThHdjhGJWZLaEM=" -X "POST" http://127.0.0.1:8001/api/event
 
 # End the event 2 hours after it starts on a Sunday
-21 00 * * sun curl -H "Authorization: Basic OjFCbCo4VThHdjhGJWZLaEM=" -X "DELETE" http://127.0.0.1:8001/api/event
+00 21 * * sun curl -H "Authorization: Basic OjFCbCo4VThHdjhGJWZLaEM=" -X "DELETE" http://127.0.0.1:8001/api/event
 
 # Delete all teams the monday following
 00 18 * * mon curl -H "Authorization: Basic OjFCbCo4VThHdjhGJWZLaEM=" -X "DELETE" http://127.0.0.1:8001/api/teams
