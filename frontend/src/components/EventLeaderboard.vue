@@ -1,11 +1,11 @@
 <template>
   <div class="sidebar">
     <img alt="EURE Logo" src="../assets/eure.png">
-    <button type="button" @click="toggleActivity()">Toggle Activity</button>
+    <button type="button" @click="toggleActivity">Toggle Activity</button>
   </div>
   <div class="container">
-    <div id="leaderboard">
-      <table id="table">
+    <div class="leaderboard">
+      <transition-group name="lb" class="table" tag="table">
         <tr v-for="(t, pos) in leaderboard" :key="t.teamName" class="team-content">
           <td><h2 class="rank">{{ pos + 1 }}</h2></td>
 
@@ -71,12 +71,12 @@
             </div>
           </td>
         </tr>
-      </table>
+      </transition-group>
     </div>
-    <div v-if="!hideActivity" id="feed">
+    <div v-if="!hideActivity" class="feed">
       <h2>Recent Activity</h2>
       <ul>
-        <li v-for="msg in activity.slice(0).reverse()" :key="msg.id">
+        <li v-for="msg in activityFeed" :key="msg.id">
           {{ msg.msg }}
         </li>
       </ul>
@@ -119,6 +119,7 @@ export default defineComponent({
     const teams = ref(new Map<string, Team>())
     const activity = ref<Activity[]>([])
     const leaderboard = computed(() => [...teams.value.values()].sort((a, b) => a.score > b.score ? -1 : 1))
+    const activityFeed = computed(() => activity.value.slice().reverse())
     const hideActivity = ref((sessionStorage.getItem("hideActivity") ?? 'true').toLowerCase() === "true")
 
     const {eventSource} = toRefs(props)
@@ -167,6 +168,7 @@ export default defineComponent({
       teams,
       activity,
       leaderboard,
+      activityFeed,
       hideActivity,
       toggleActivity,
     }
@@ -246,14 +248,18 @@ export default defineComponent({
   }
 }
 
-#leaderboard {
+.leaderboard {
   width: 100%;
   margin: 0 auto;
   padding: 1rem 2rem;
   max-width: 1200px;
 }
 
-#table {
+.lb-move {
+  transition: transform .8s ease;
+}
+
+.table {
   width: 100%;
   border-collapse: collapse;
   font-size: 1.2em;
@@ -294,7 +300,7 @@ export default defineComponent({
   }
 }
 
-#feed {
+.feed {
   width: 100%;
   font-size: 1.2em;
   overflow-y: scroll;
