@@ -1,25 +1,15 @@
 package com.jackchapman.eurustevents
 
-import com.google.api.client.auth.oauth2.Credential
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.json.jackson2.JacksonFactory
-import com.google.api.client.util.store.FileDataStoreFactory
-import com.google.api.services.sheets.v4.Sheets
-import com.google.api.services.sheets.v4.SheetsScopes
-import com.google.api.services.sheets.v4.model.*
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.jackchapman.eurustevents.commands.Command
 import dev.kord.core.Kord
+import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.behavior.interaction.EphemeralInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.followUpPublic
 import dev.kord.core.entity.channel.GuildMessageChannel
+import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.exception.EntityNotFoundException
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -46,9 +36,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
-import java.io.FileNotFoundException
-import java.io.InputStream
-import java.io.InputStreamReader
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -62,25 +49,6 @@ object WebServer : KoinComponent {
     private val config by inject<Config>()
     private val client by inject<Kord>()
 
-    private fun getCredentials(HTTP_TRANSPORT: NetHttpTransport): Credential {
-        // Load client secrets.
-        val inp: InputStream = WebServer::class.java.classLoader.getResourceAsStream("credentials.json")
-            ?: throw FileNotFoundException("Credential file not found")
-        val clientSecrets = GoogleClientSecrets.load(JacksonFactory.getDefaultInstance(), InputStreamReader(inp))
-
-        // Build flow and trigger user authorization request.
-        val flow = GoogleAuthorizationCodeFlow.Builder(
-            HTTP_TRANSPORT,
-            JacksonFactory.getDefaultInstance(),
-            clientSecrets,
-            listOf(SheetsScopes.SPREADSHEETS, SheetsScopes.DRIVE_FILE, SheetsScopes.DRIVE)
-        ).setDataStoreFactory(FileDataStoreFactory(File("tokens")))
-            .setAccessType("offline")
-            .build()
-        val receiver = LocalServerReceiver.Builder().setHost("127.0.0.1").setPort(8888).build()
-        return AuthorizationCodeInstalledApp(flow, receiver).authorize("user")
-    }
-
     val flow = MutableSharedFlow<SSEEvent>()
     val steamLink = mutableMapOf<String, LinkInfo>()
     fun run(port: Int = 80) {
@@ -92,7 +60,7 @@ object WebServer : KoinComponent {
                 basic("auth") {
                     realm = "Access event admin endpoints"
                     validate { credentials ->
-                        if(credentials.password == config.server.password) UserIdPrincipal(credentials.name)
+                        if (credentials.password == config.server.password) UserIdPrincipal(credentials.name)
                         else null
                     }
                 }
@@ -194,7 +162,7 @@ object WebServer : KoinComponent {
                                 .filter { slashCmd -> slashCmd.name in Command.EVENT_COMMANDS.map { it.key } }
                                 .collect { it.delete() }
 
-                            if(config.rust.ftp == null) return@delete
+                            if (config.rust.ftp == null) return@delete
                             withContext(Dispatchers.IO) {
                                 val gson = Gson()
                                 val conn = URL("${config.rust.ftp}/oxide/data/KDRData.json").openConnection()
@@ -211,23 +179,6 @@ object WebServer : KoinComponent {
                                     }
                                 }
 
-                                // Build a new authorized API client service.
-                                val transport = GoogleNetHttpTransport.newTrustedTransport()
-                                val service =
-                                    Sheets.Builder(transport,
-                                        JacksonFactory.getDefaultInstance(),
-                                        getCredentials(transport))
-                                        .setApplicationName("EventStatSheets")
-                                        .build()
-
-                                val time = LocalDateTime.ofEpochSecond(event.startDate, 0, ZoneOffset.UTC)
-                                val spreadsheet = Spreadsheet().setProperties(
-                                    SpreadsheetProperties().setTitle(
-                                        "Event - ${time.format(DateTimeFormatter.ISO_DATE_TIME)}"
-                                    )
-                                )
-                                val spread =
-                                    service.spreadsheets().create(spreadsheet).setFields("spreadsheetId").execute()
                                 val headers = listOf(
                                     "Team",
                                     "Name",
@@ -236,7 +187,9 @@ object WebServer : KoinComponent {
                                     "Kills",
                                     "Team's Kills",
                                     "Team's AKs",
-                                    "Total Team Points"
+                                    "Total Team Points",
+                                    "",
+                                    "Winning Teams",
                                 )
                                 val values = mutableListOf(headers)
                                 var currentRow = 2
@@ -246,17 +199,17 @@ object WebServer : KoinComponent {
                                         RustPlayers.discordId inList allMember
                                     }.associate { it[RustPlayers.discordId] to it[RustPlayers.steamId] }
                                 }
+                                val guild = client.getGuild(GUILD_EURE.sf)!!
                                 event.teams.forEach { team ->
                                     team.allMembers.forEach {
                                         values.add(
                                             listOf(
                                                 team.name,
-                                                client.getGuild(GUILD_EURE.sf)!!.getMemberOrNull(it.sf)?.displayName
+                                                guild.getMemberOrNull(it.sf)?.displayName
                                                     ?: "Not In Server",
                                                 steamPlayers[it].toString(),
                                                 it.toString(),
-                                                (data[steamPlayers[it]]?.kills ?: 0).toString(),
-                                                *("" * 3)
+                                                (data[steamPlayers[it]]?.kills ?: 0).toString()
                                             )
                                         )
                                     }
@@ -272,69 +225,17 @@ object WebServer : KoinComponent {
                                     values.add(listOf())
                                     currentRow += 2
                                 }
-                                val valueRange = ValueRange().setValues(values.toList())
-                                val winningTeams = ValueRange().setValues(
-                                    listOf(listOf("Winning Teams"),
-                                        listOf("=SORTN(A2:A,${event.teamSize},FALSE, H2:H,FALSE)"))
-                                )
-                                service.spreadsheets().values().append(spread.spreadsheetId, "A1:H", valueRange)
-                                    .setValueInputOption("USER_ENTERED").execute()
-
-                                service.spreadsheets().values().append(spread.spreadsheetId, "J1:J2", winningTeams)
-                                    .setValueInputOption("USER_ENTERED").execute()
-
-                                val autoWidth = Request().setAutoResizeDimensions(
-                                    AutoResizeDimensionsRequest().setDimensions(
-                                        DimensionRange().setDimension("A1:H")
+                                values[1] =
+                                    values[1] + listOf(*("" * 4), "=SORTN(A2:A,${event.teamSize},FALSE,H2:H,FALSE)")
+                                guild.getChannelOf<TextChannel>(CHANNEL_DEV.sf).createMessage {
+                                    val curTime = LocalDateTime.ofEpochSecond(event.startDate, 0, ZoneOffset.UTC)
+                                    addFile(
+                                        "Event - ${curTime.format(DateTimeFormatter.ISO_DATE_TIME)}.csv",
+                                        values.joinToString("\n") {
+                                            it.joinToString(",") { f -> "\"$f\"" }
+                                        }.byteInputStream()
                                     )
-                                )
-
-                                val backgroundFormat = Request().setAddConditionalFormatRule(
-                                    AddConditionalFormatRuleRequest().setRule(
-                                        ConditionalFormatRule().setRanges(
-                                            listOf(
-                                                GridRange().setStartColumnIndex(0).setEndColumnIndex(1)
-                                                    .setStartRowIndex(0).setEndRowIndex(currentRow)
-                                            )
-                                        ).setBooleanRule(
-                                            BooleanRule().setCondition(
-                                                BooleanCondition().setType("TEXT_EQ")
-                                                    .setValues(listOf(ConditionValue().setUserEnteredValue("Team")))
-                                            ).setFormat(
-                                                CellFormat().setBackgroundColor(
-                                                    Color().setRed(0.6431372549F).setGreen(0.76078431372F)
-                                                        .setBlue(0.95686274509F)
-                                                )
-                                            )
-                                        )
-                                    ).setIndex(0)
-                                )
-
-                                val boldHeadings = Request().setAddConditionalFormatRule(
-                                    AddConditionalFormatRuleRequest().setRule(
-                                        ConditionalFormatRule().setRanges(
-                                            listOf(
-                                                GridRange().setStartRowIndex(0).setEndRowIndex(1)
-                                            )
-                                        ).setBooleanRule(
-                                            BooleanRule().setCondition(
-                                                BooleanCondition().setType("NOT_BLANK").setValues(emptyList())
-                                            ).setFormat(
-                                                CellFormat().setTextFormat(TextFormat().setBold(true))
-                                            )
-                                        )
-                                    ).setIndex(1)
-                                )
-                                service.spreadsheets().batchUpdate(
-                                    spread.spreadsheetId,
-                                    BatchUpdateSpreadsheetRequest().setRequests(
-                                        listOf(
-//                                    autoWidth,
-                                            backgroundFormat,
-                                            boldHeadings
-                                        )
-                                    )
-                                ).execute()
+                                }
                             }
                         }
                         post("/signups") { // Starts new event

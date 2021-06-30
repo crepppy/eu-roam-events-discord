@@ -47,11 +47,6 @@ dependencies {
     implementation("io.ktor:ktor-client-gson:1.6.0")
     implementation("io.ktor:ktor-client-core:1.6.0")
 
-    // Google Sheets
-    implementation("com.google.api-client:google-api-client:1.30.4")
-    implementation("com.google.apis:google-api-services-sheets:v4-rev581-1.25.0")
-    implementation("com.google.oauth-client:google-oauth-client-jetty:1.30.6")
-
     implementation("io.insert-koin:koin-core-ext:3.0.1-beta-2") // Dependency Injection
     implementation("org.openid4java:openid4java:1.0.0") // Steam Authentication
 }
